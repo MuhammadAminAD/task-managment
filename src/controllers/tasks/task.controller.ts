@@ -83,8 +83,8 @@ export class TaskController {
             const db = await openDb();
             const prev: {id: string , title: string , expire: string , status: string} = await db.get("SELECT * FROM tasks WHERE id = ?" , [id])
             prev.title = title || prev.title
-            prev.expire = expire || prev.title
-            prev.status = status || prev.title
+            prev.expire = expire || prev.expire
+            prev.status = status || prev.status
             await db.run(
                 "UPDATE tasks SET title = ?, expire = ?, status = ? WHERE id = ?",
                 [prev.title, prev.expire, prev.status, prev.id]
