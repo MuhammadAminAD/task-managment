@@ -46,23 +46,15 @@ bot.hears("📥 Ma'lumotlarni yangilash", async (ctx) => {
 bot.on("document", async (ctx) => {
   try {
     const document = ctx.message.document;
-
-    // Faqat .db faylga ruxsat
     if (!document.file_name.endsWith(".db")) {
       return ctx.reply("❌ Faqat .db fayl yuboring!");
     }
-
     const fileId = document.file_id;
     const fileLink = await ctx.telegram.getFileLink(fileId);
-
-    // Faylni yuklab olish
     const res = await fetch(fileLink.href);
     const buffer = Buffer.from(await res.arrayBuffer());
-
-    // Eski faylni o‘chirib, yangisini saqlaymiz
     if (fs.existsSync(DB_PATH)) fs.unlinkSync(DB_PATH);
     fs.writeFileSync(DB_PATH, buffer);
-
     await ctx.reply("✅ database.db fayl yangilandi!");
   } catch (error) {
     console.error(error);
@@ -70,7 +62,6 @@ bot.on("document", async (ctx) => {
   }
 });
 
-// 🚀 Botni ishga tushiramiz
 bot.launch();
 
 console.log("🤖 Bot ishga tushdi...");

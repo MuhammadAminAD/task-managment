@@ -19,7 +19,7 @@ export class TaskItemController {
             await db.run(
                 "INSERT INTO task_items (title , task_id) VALUES (? , ?)", [title , id]
             )
-            res.json({ ok: true, message: "Task added ✅" });
+            res.send({ ok: true, message: "Task added ✅" });
 
         } catch (error) {
             res.status(500).json({ ok: false, error_message: error.message });
