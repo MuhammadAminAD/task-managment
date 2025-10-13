@@ -7,13 +7,21 @@ export class TaskController {
         try {
             const db = await openDb();
             await db.exec(`
-        CREATE TABLE IF NOT EXISTS tasks (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT NOT NULL,
-          expire TEXT,
-          status TEXT DEFAULT 'to-do'
-        )
-      `);
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    expire TEXT NOT NULL,
+                    status TEXT DEFAULT 'to_do' NOT NULL
+                );`);
+            await db.exec(`
+                CREATE TABLE IF NOT EXISTS task_items(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    done BOOLEAN DEFAULT 0,
+                    task_id INTEGER,
+                    FOREIGN KEY (task_id) REFERENCES tasks(ID) ON DELETE CASCADE
+                );`);
+
             res.status(200).json({ ok: true, message: "DB initialized ✅" });
         } catch (error: any) {
             console.error(error);
@@ -49,8 +57,17 @@ export class TaskController {
     async getAll(_req: Request, res: Response) {
         try {
             const db = await openDb();
-            const tasks = await db.all("SELECT * FROM tasks");
-            const data = {success: [] , progress: [] , todo:[]}
+            const data = { success: [], progress: [], todo: [] }
+
+            let tasks = await db.all("SELECT * FROM tasks");
+            await Promise.all(
+                tasks.map(async (task) => {
+                    const taskItems = await db.all("SELECT * FROM task_items WHERE task_id = ?", [task.id]);
+                    task.items = taskItems;
+                })
+            );
+
+
             data.success = tasks.filter((task) => task.status === "success")
             data.progress = tasks.filter((task) => task.status === "in-progress")
             data.todo = tasks.filter((task) => task.status === "to-do")
@@ -81,7 +98,7 @@ export class TaskController {
         const { title, expire, status } = req.body;
         try {
             const db = await openDb();
-            const prev: {id: string , title: string , expire: string , status: string} = await db.get("SELECT * FROM tasks WHERE id = ?" , [id])
+            const prev: { id: string, title: string, expire: string, status: string } = await db.get("SELECT * FROM tasks WHERE id = ?", [id])
             prev.title = title || prev.title
             prev.expire = expire || prev.expire
             prev.status = status || prev.status
