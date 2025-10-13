@@ -18,6 +18,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+import "./config/bot.config.js"
+
 app.use((req, res, next) => {
     if (req.method === "OPTIONS") return next();
     if (["POST", "PUT", "PATCH"].includes(req.method)) {
