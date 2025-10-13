@@ -3,7 +3,7 @@ import { TaskController } from "../controllers/tasks/task.controller.js";
 import { TaskItemController } from "../controllers/tasks/taskItem.controller.js";
 
 const route = Router();
-const task = new TaskController();x
+const task = new TaskController();
 const taskItem = new TaskItemController();
 
 route.get("/tasks/init", task.init);
