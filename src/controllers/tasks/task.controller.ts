@@ -13,7 +13,8 @@ export class TaskController {
                     title TEXT NOT NULL,
                     expire TEXT NOT NULL,
                     status TEXT DEFAULT 'to-do' NOT NULL,
-                    "group" TEXT DEFAULT ''
+                    group_id INTEGER DEFAULT 0,
+                    FOREIGN KEY (group_id) REFERENCES groups(ID) ON DELETE SET DEFAULT
                 );
             `);
 
@@ -56,7 +57,7 @@ export class TaskController {
 
             const db = await openDb();
             await db.run(
-                'INSERT INTO tasks (title, expire, status, "group") VALUES (?, ?, ?, ?)',
+                'INSERT INTO tasks (title, expire, status, group_id) VALUES (?, ?, ?, ?)',
                 [title, expire, status || "to-do", group || ""]
             );
 
@@ -75,7 +76,7 @@ export class TaskController {
 
             let tasks: any[] = [];
             if (group && group.length > 0) {
-                tasks = await db.all('SELECT * FROM tasks WHERE "group" = ?', [group]);
+                tasks = await db.all('SELECT * FROM tasks WHERE group_id = ?', [group]);
             } else {
                 tasks = await db.all("SELECT * FROM tasks");
             }
@@ -136,7 +137,7 @@ export class TaskController {
             const newGroup = group || prev.group;
 
             await db.run(
-                'UPDATE tasks SET title = ?, expire = ?, status = ?, "group" = ? WHERE id = ?',
+                'UPDATE tasks SET title = ?, expire = ?, status = ?, group_id = ? WHERE id = ?',
                 [newTitle, newExpire, newStatus, newGroup, id]
             );
 
