@@ -134,7 +134,7 @@ export class TaskController {
             const newTitle = title || prev.title;
             const newExpire = expire || prev.expire;
             const newStatus = status || prev.status;
-            const newGroup = group || prev.group;
+            const newGroup = group || prev.group_id || 0;
 
             await db.run(
                 'UPDATE tasks SET title = ?, expire = ?, status = ?, group_id = ? WHERE id = ?',
