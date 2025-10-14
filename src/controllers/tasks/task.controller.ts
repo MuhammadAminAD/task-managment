@@ -6,13 +6,17 @@ export class TaskController {
     async init(_req: Request, res: Response) {
         try {
             const db = await openDb();
+
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL,
                     expire TEXT NOT NULL,
-                    status TEXT DEFAULT 'to-do' NOT NULL
-                );`);
+                    status TEXT DEFAULT 'to-do' NOT NULL,
+                    "group" TEXT DEFAULT ''
+                );
+            `);
+
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS task_items(
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +24,15 @@ export class TaskController {
                     done BOOLEAN DEFAULT 0,
                     task_id INTEGER,
                     FOREIGN KEY (task_id) REFERENCES tasks(ID) ON DELETE CASCADE
-                );`);
+                );
+            `);
+
+            await db.exec(`
+                CREATE TABLE IF NOT EXISTS groups(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL
+                );
+            `);
 
             res.status(200).json({ ok: true, message: "DB initialized ✅" });
         } catch (error: any) {
@@ -31,20 +43,21 @@ export class TaskController {
 
     // 2. Task qo‘shish
     async create(req: Request, res: Response) {
-        const { title, expire, status } = req.body;
+        const { title, expire, status, group } = req.body;
         try {
             if (!title || !expire) {
-                let error = "";
-                if (!title && !expire) error = "title and expire are required";
-                else if (!title) error = "title is required";
-                else error = "expire is required";
+                let error = !title && !expire
+                    ? "title and expire are required"
+                    : !title
+                        ? "title is required"
+                        : "expire is required";
                 return res.status(400).json({ ok: false, error_message: error });
             }
 
             const db = await openDb();
             await db.run(
-                "INSERT INTO tasks (title, expire, status) VALUES (?, ?, ?)",
-                [title, expire, status || "to-do"]
+                'INSERT INTO tasks (title, expire, status, "group") VALUES (?, ?, ?, ?)',
+                [title, expire, status || "to-do", group || ""]
             );
 
             res.json({ ok: true, message: "Task added ✅" });
@@ -54,30 +67,40 @@ export class TaskController {
     }
 
     // 3. Barcha tasklarni olish
-    async getAll(_req: Request, res: Response) {
+    async getAll(req: Request, res: Response) {
         try {
+            const group = typeof req.query.group === "string" ? req.query.group : null;
             const db = await openDb();
-            const data = { success: [], progress: [], todo: [] }
+            const data = { success: [], progress: [], todo: [] };
 
-            let tasks = await db.all("SELECT * FROM tasks");
+            let tasks: any[] = [];
+            if (group && group.length > 0) {
+                tasks = await db.all('SELECT * FROM tasks WHERE "group" = ?', [group]);
+            } else {
+                tasks = await db.all("SELECT * FROM tasks");
+            }
+
             await Promise.all(
                 tasks.map(async (task) => {
-                    const taskItems = await db.all("SELECT * FROM task_items WHERE task_id = ?", [task.id]);
-                    task.items = taskItems;
+                    const items = await db.all("SELECT * FROM task_items WHERE task_id = ?", [task.id]);
+                    task.items = items;
                 })
             );
 
-           Promise.all([
-             data.success = tasks.filter((task) => task.status === "success")
-             .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime()),
-            data.progress = tasks.filter((task) => task.status === "in-progress")
-            .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime()),
-            data.todo = tasks.filter((task) => task.status === "to-do")
-            .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime()),
-           ])
+            // Tasklarni status bo‘yicha ajratish
+            data.success = tasks
+                .filter((t) => t.status === "success")
+                .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime());
 
+            data.progress = tasks
+                .filter((t) => t.status === "in-progress")
+                .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime());
 
-            res.json({ ok: true, data: data });
+            data.todo = tasks
+                .filter((t) => t.status === "to-do")
+                .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime());
+
+            res.json({ ok: true, data });
         } catch (error: any) {
             res.status(500).json({ ok: false, error_message: error.message });
         }
@@ -88,9 +111,7 @@ export class TaskController {
         const { status } = req.params;
         try {
             const db = await openDb();
-            const tasks = await db.all("SELECT * FROM tasks WHERE status = ?", [
-                status,
-            ]);
+            const tasks = await db.all("SELECT * FROM tasks WHERE status = ?", [status]);
             res.json({ ok: true, data: tasks });
         } catch (error: any) {
             res.status(500).json({ ok: false, error_message: error.message });
@@ -100,22 +121,28 @@ export class TaskController {
     // 5. Taskni yangilash (title, expire, yoki status)
     async update(req: Request, res: Response) {
         const { id } = req.params;
-        const { title, expire, status } = req.body;
+        const { title, expire, status, group } = req.body;
         try {
             const db = await openDb();
-            const prev: { id: string, title: string, expire: string, status: string } 
-            = await db.get("SELECT * FROM tasks WHERE id = ?", [id])
-            if(!prev){
+            const prev = await db.get("SELECT * FROM tasks WHERE id = ?", [id]);
+
+            if (!prev) {
                 return res.status(404).json({ ok: false, message: "Task not found" });
             }
-            prev.title = title || prev.title
-            prev.expire = expire || prev.expire
-            prev.status = status || prev.status
+
+            const newTitle = title || prev.title;
+            const newExpire = expire || prev.expire;
+            const newStatus = status || prev.status;
+            const newGroup = group || prev.group;
+
             await db.run(
-                "UPDATE tasks SET title = ?, expire = ?, status = ? WHERE id = ?",
-                [prev.title, prev.expire, prev.status, prev.id]
+                'UPDATE tasks SET title = ?, expire = ?, status = ?, "group" = ? WHERE id = ?',
+                [newTitle, newExpire, newStatus, newGroup, id]
             );
-            res.json({ ok: true, message: "Task updated ✅" });
+
+            const updated = await db.get("SELECT * FROM tasks WHERE id = ?", [id]);
+
+            res.json({ ok: true, message: "Task updated ✅", data: updated });
         } catch (error: any) {
             res.status(500).json({ ok: false, error_message: error.message });
         }
