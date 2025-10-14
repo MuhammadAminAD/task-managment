@@ -11,7 +11,7 @@ export class TaskController {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL,
                     expire TEXT NOT NULL,
-                    status TEXT DEFAULT 'to_do' NOT NULL
+                    status TEXT DEFAULT 'to-do' NOT NULL
                 );`);
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS task_items(
@@ -67,10 +67,15 @@ export class TaskController {
                 })
             );
 
-
-            data.success = tasks.filter((task) => task.status === "success")
+           Promise.all([
+             data.success = tasks.filter((task) => task.status === "success")
+             .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime()),
             data.progress = tasks.filter((task) => task.status === "in-progress")
+            .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime()),
             data.todo = tasks.filter((task) => task.status === "to-do")
+            .sort((a, b) => new Date(a.expire).getTime() - new Date(b.expire).getTime()),
+           ])
+
 
             res.json({ ok: true, data: data });
         } catch (error: any) {
@@ -98,7 +103,11 @@ export class TaskController {
         const { title, expire, status } = req.body;
         try {
             const db = await openDb();
-            const prev: { id: string, title: string, expire: string, status: string } = await db.get("SELECT * FROM tasks WHERE id = ?", [id])
+            const prev: { id: string, title: string, expire: string, status: string } 
+            = await db.get("SELECT * FROM tasks WHERE id = ?", [id])
+            if(!prev){
+                return res.status(404).json({ ok: false, message: "Task not found" });
+            }
             prev.title = title || prev.title
             prev.expire = expire || prev.expire
             prev.status = status || prev.status
