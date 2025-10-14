@@ -6,7 +6,12 @@ export class TaskController {
     async init(_req: Request, res: Response) {
         try {
             const db = await openDb();
-
+            await db.exec(`
+                CREATE TABLE IF NOT EXISTS groups(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL
+                );
+            `);
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,12 +33,6 @@ export class TaskController {
                 );
             `);
 
-            await db.exec(`
-                CREATE TABLE IF NOT EXISTS groups(
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT NOT NULL
-                );
-            `);
 
             res.status(200).json({ ok: true, message: "DB initialized ✅" });
         } catch (error: any) {
