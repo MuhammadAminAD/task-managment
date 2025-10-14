@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { openDb } from "../../config/database.config.js";
-import { message } from "telegraf/filters";
 
 export class GroupController {
     async get(req: Request, res: Response) {
@@ -33,11 +32,10 @@ export class GroupController {
         try {
             const {id} = req.params
             const db = await openDb()
-            db.run("DELETE FROM groups WHERE ID = ?" , [id])
+            await db.run("DELETE FROM groups WHERE ID = ?" , [id])
 
             return res
             .status(204)
-            .send({ok: true , message: "group delete"})
         } catch (error) {
             return res.status(500).send({ ok: false, error: error.message });
         }

@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { openDb } from "../../config/database.config.js";
-import { message } from "telegraf/filters";
 
 export class TaskItemController {
     async create(req: Request, res: Response) {
