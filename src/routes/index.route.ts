@@ -13,4 +13,5 @@ route.put("/tasks/:id", task.update);
 route.delete("/tasks/:id", task.delete);
 
 route.post("/tasks/items/:id",  taskItem.create);
+route.put("/tasks/items/:id",  taskItem.status);
 export default route;       

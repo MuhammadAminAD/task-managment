@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { openDb } from "../../config/database.config.js";
+import { message } from "telegraf/filters";
 
 export class TaskItemController {
     async create(req: Request, res: Response) {
@@ -24,5 +25,23 @@ export class TaskItemController {
         } catch (error) {
             res.status(500).json({ ok: false, error_message: error.message });
         }
+    }
+
+    async status(req :Request , res: Response) {
+        const {id} = req.params
+        const {status , title} = req.body
+
+        const db = await openDb()
+
+        const prevData = await db.get('SELECT * FROM task_items WHERE id = ?;' , [id])
+
+        prevData.done = status != null ? status : prevData.done
+        prevData.title = title || prevData.title
+
+       const newData=  await db.get('UPDATE task_items SET done = ? , title = ? WHERE id = ? RETURNING *;' , [prevData.done , prevData.title, id])
+
+        return res
+            .status(200)
+            .send({ok:true , message: "task update" , data : newData})
     }
 }
