@@ -3,20 +3,20 @@ import { openDb } from "../../config/database.config.js";
 
 export class TaskController {
     // 1. Jadval yaratish
-async init(_req: Request, res: Response) {
-    try {
-        const db = await openDb();
-        
-        // Groups jadvalini yaratish
-        await db.exec(`
+    async init(_req: Request, res: Response) {
+        try {
+            const db = await openDb();
+
+            // Groups jadvalini yaratish
+            await db.exec(`
             CREATE TABLE IF NOT EXISTS groups(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL
             );
         `);
 
-        // Tasks jadvalini yaratish
-        await db.exec(`
+            // Tasks jadvalini yaratish
+            await db.exec(`
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
@@ -28,18 +28,18 @@ async init(_req: Request, res: Response) {
             );
         `);
 
-        // MIGRATION: Agar eski tasks jadvalida group_id yo'q bo'lsa, qo'shish
-        const columns = await db.all(`PRAGMA table_info(tasks);`);
-        const hasGroupId = columns.some((col: any) => col.name === 'created');
-        
-        if (!hasGroupId) {
-            console.log('Adding group_id column to existing tasks...');
-          await db.exec(`ALTER TABLE tasks ADD COLUMN created TEXT;`);
-          await db.exec(`UPDATE tasks SET created = datetime('now') WHERE created IS NULL;`);
-        }
+            // MIGRATION: Agar eski tasks jadvalida group_id yo'q bo'lsa, qo'shish
+            const columns = await db.all(`PRAGMA table_info(tasks);`);
+            const hasGroupId = columns.some((col: any) => col.name === 'created');
 
-        // Task items jadvalini yaratish
-        await db.exec(`
+            if (!hasGroupId) {
+                console.log('Adding group_id column to existing tasks...');
+                await db.exec(`ALTER TABLE tasks ADD COLUMN created TEXT;`);
+                await db.exec(`UPDATE tasks SET created = datetime('now') WHERE created IS NULL;`);
+            }
+
+            // Task items jadvalini yaratish
+            await db.exec(`
             CREATE TABLE IF NOT EXISTS task_items(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
@@ -49,12 +49,12 @@ async init(_req: Request, res: Response) {
             );
         `);
 
-        res.status(200).json({ ok: true, message: "DB initialized ✅" });
-    } catch (error: any) {
-        console.error(error);
-        res.status(500).json({ ok: false, error_message: error.message });
+            res.status(200).json({ ok: true, message: "DB initialized ✅" });
+        } catch (error: any) {
+            console.error(error);
+            res.status(500).json({ ok: false, error_message: error.message });
+        }
     }
-}
 
     // 2. Task qo‘shish
     async create(req: Request, res: Response) {
@@ -68,10 +68,13 @@ async init(_req: Request, res: Response) {
                         : "expire is required";
                 return res.status(400).json({ ok: false, error_message: error });
             }
+
+            const created = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
             const db = await openDb();
             await db.run(
-                'INSERT INTO tasks (title, expire, status, group_id) VALUES (?, ?, ?, ?)',
-                [title, expire, status || "to-do", group || "" ]
+                'INSERT INTO tasks (title, expire, status, group_id, created) VALUES (?, ?, ?, ?, ?)',
+                [title, expire, status || "to-do", group || 0, created]
             );
 
             res.json({ ok: true, message: "Task added ✅" });
