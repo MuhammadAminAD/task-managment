@@ -2,6 +2,7 @@ import { Router } from "express";
 import { TaskController } from "../controllers/tasks/task.controller.js";
 import { TaskItemController } from "../controllers/tasks/taskItem.controller.js";
 import { GroupController } from "../controllers/tasks/groups.controller.js";
+import { Ai } from "../controllers/ai/ai.controller.js";
 
 const route = Router();
 const task = new TaskController();
@@ -20,5 +21,7 @@ route.put("/tasks/items/:id",  taskItem.status);
 route.get('/groups' , group.get)
 route.post('/groups' , group.create)
 route.delete('/groups/:id' , group.delete)
+
+route.post("/ai" , Ai)
 
 export default route;       
