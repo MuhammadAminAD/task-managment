@@ -68,11 +68,10 @@ async init(_req: Request, res: Response) {
                         : "expire is required";
                 return res.status(400).json({ ok: false, error_message: error });
             }
-            const now = new Date()
             const db = await openDb();
             await db.run(
                 'INSERT INTO tasks (title, expire, status, group_id , created) VALUES (?, ?, ?, ?, ?)',
-                [title, expire, status || "to-do", group || "" , now]
+                [title, expire, status || "to-do", group || "" ]
             );
 
             res.json({ ok: true, message: "Task added ✅" });
