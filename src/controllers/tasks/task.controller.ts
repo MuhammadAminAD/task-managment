@@ -70,7 +70,7 @@ async init(_req: Request, res: Response) {
             }
             const db = await openDb();
             await db.run(
-                'INSERT INTO tasks (title, expire, status, group_id , created) VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO tasks (title, expire, status, group_id) VALUES (?, ?, ?, ?, ?)',
                 [title, expire, status || "to-do", group || "" ]
             );
 
