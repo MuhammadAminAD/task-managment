@@ -23,19 +23,19 @@ async init(_req: Request, res: Response) {
                 expire TEXT NOT NULL,
                 status TEXT DEFAULT 'to-do' NOT NULL,
                 group_id INTEGER DEFAULT 0,
+                created TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (group_id) REFERENCES groups(ID) ON DELETE SET DEFAULT
             );
         `);
 
         // MIGRATION: Agar eski tasks jadvalida group_id yo'q bo'lsa, qo'shish
         const columns = await db.all(`PRAGMA table_info(tasks);`);
-        const hasGroupId = columns.some((col: any) => col.name === 'group_id');
+        const hasGroupId = columns.some((col: any) => col.name === 'created');
         
         if (!hasGroupId) {
             console.log('Adding group_id column to existing tasks...');
-            await db.exec(`
-                ALTER TABLE tasks ADD COLUMN group_id INTEGER DEFAULT 0;
-            `);
+          await db.exec(`ALTER TABLE tasks ADD COLUMN created TEXT;`);
+          await db.exec(`UPDATE tasks SET created = datetime('now') WHERE created IS NULL;`);
         }
 
         // Task items jadvalini yaratish
@@ -68,11 +68,11 @@ async init(_req: Request, res: Response) {
                         : "expire is required";
                 return res.status(400).json({ ok: false, error_message: error });
             }
-
+            const now = new Date()
             const db = await openDb();
             await db.run(
-                'INSERT INTO tasks (title, expire, status, group_id) VALUES (?, ?, ?, ?)',
-                [title, expire, status || "to-do", group || ""]
+                'INSERT INTO tasks (title, expire, status, group_id , created) VALUES (?, ?, ?, ?, ?)',
+                [title, expire, status || "to-do", group || "" , now]
             );
 
             res.json({ ok: true, message: "Task added ✅" });
