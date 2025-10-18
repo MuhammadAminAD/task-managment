@@ -1,67 +1,49 @@
 import { Telegraf, Markup } from "telegraf";
-import fs from "fs";
-import fetch from "node-fetch";
-import  env  from "dotenv";
-env.config()
+import env from "dotenv";
+env.config();
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new Telegraf(BOT_TOKEN);
 
-// ✅ Fayl manzili
-const DB_PATH = "./database.db";
-
-// ✅ Start komandasi — 2ta button bilan
 bot.start((ctx) => {
-  return ctx.reply(
-    "📦 Quyidagi amallardan birini tanlang:",
-    Markup.keyboard([
-      ["📤 Ma'lumotlarni olish"],
-      ["📥 Ma'lumotlarni yangilash"],
-    ])
-      .oneTime()
-      .resize()
+  const firstName = ctx.from.first_name;
+  const requestPhoneButton = Markup.keyboard([
+    [Markup.button.contactRequest("📱 Raqamni yuborish")],
+  ])
+    .resize()
+    .oneTime();
+
+  ctx.reply(
+    `Hello, ${firstName}! Please press the button below to share your phone number.`,
+    requestPhoneButton
   );
 });
 
-// ✅ Ma'lumotlarni olish — database.db ni yuboradi
-bot.hears("📤 Ma'lumotlarni olish", async (ctx) => {
-  try {
-    if (fs.existsSync(DB_PATH)) {
-      await ctx.replyWithDocument({ source: DB_PATH, filename: "database.db" });
-    } else {
-      await ctx.reply("❌ Fayl topilmadi!");
-    }
-  } catch (error) {
-    console.error(error);
-    await ctx.reply("❌ Xatolik yuz berdi.");
-  }
-});
+// Telefon raqam yuborilganda
+bot.on("contact", async (ctx) => {
+  const contact = ctx.message.contact;
+  const phone = contact.phone_number;
+  const firstName = contact.first_name || ctx.from.first_name;
 
-// ✅ Ma'lumotlarni yangilash — foydalanuvchidan fayl so‘raymiz
-bot.hears("📥 Ma'lumotlarni yangilash", async (ctx) => {
-  await ctx.reply("📎 Iltimos, yangi `database.db` faylni yuboring.");
-});
+  // Token (odatda backenddan olinadi)
+  const fakeToken = Buffer.from(`${phone}:${Date.now()}`).toString("base64");
+  const link = `https://fintechhub/token?token=${fakeToken}`; // masalan: https://myapp.vercel.app/token?token=...
 
-// ✅ Fayl yuborilganda uni qabul qilish
-bot.on("document", async (ctx) => {
-  try {
-    const document = ctx.message.document;
-    if (!document.file_name.endsWith(".db")) {
-      return ctx.reply("❌ Faqat .db fayl yuboring!");
-    }
-    const fileId = document.file_id;
-    const fileLink = await ctx.telegram.getFileLink(fileId);
-    const res = await fetch(fileLink.href);
-    const buffer = Buffer.from(await res.arrayBuffer());
-    if (fs.existsSync(DB_PATH)) fs.unlinkSync(DB_PATH);
-    fs.writeFileSync(DB_PATH, buffer);
-    await ctx.reply("✅ database.db fayl yangilandi!");
-  } catch (error) {
-    console.error(error);
-    await ctx.reply("❌ Xatolik yuz berdi faylni yuklashda.");
-  }
+  const message = `
+✅ Raqam qabul qilindi!
+👤 Ism: ${firstName}
+📞 Raqam: ${phone}
+  `;
+
+  await ctx.reply(message.trim(), {
+    ...Markup.removeKeyboard(),
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "👉 Tizimga kirish", url: link }],
+      ],
+    },
+  });
 });
 
 bot.launch();
-
 console.log("🤖 Bot ishga tushdi...");
