@@ -4,18 +4,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const pool = new Pool({
-  host: process.env.PGHOST,
-  port: Number(process.env.PGPORT),
-  user: process.env.PGUSER,
-  password: process.env.PGPASSWORD,
-  database: process.env.PGDATABASE,
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
 });
 
 pool.connect()
-  .then(() => console.log("✅ PostgreSQL bilan ulanish o‘rnatildi"))
+  .then(() => console.log("✅ PostgreSQL bilan ulanish o'rnatildi"))
   .catch(err => console.error("❌ Ulanishda xato:", err));
 
 export default pool;
