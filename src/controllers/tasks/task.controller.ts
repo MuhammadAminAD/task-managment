@@ -4,26 +4,46 @@ import pool from "../../config/database.config.js"
 export class TasksController {
     async create(req: Request, res: Response) {
         // @ts-ignore
-        const UID = req.user.id
-        const { title, expire, group_id } = req.body
+        const UID = req.user.id;
+        const { title, expire, group } = req.body;
+
         try {
             if (!title || !expire) {
                 return res
                     .status(400)
-                    .send({ ok: false, error_message: `"title" and "expire" are required!` })
+                    .send({ ok: false, error_message: `"title" and "expire" are required!` });
             }
-            const groupID = group_id ?? null;
-            let task = await pool.query(`INSERT INTO tasks (title, expire, group_id, owner) VALUES ($1, $2, $3, $4) RETURNING *`, [title, expire, groupID, UID])
-            task = task.rows[0]
-            return res
-                .status(201)
-                .send({ ok: true, message: "Task been successfully created.", data: task })
+
+            const groupID = group === "null" ? null : Number(group);
+            if (groupID !== null && isNaN(groupID)) {
+                return res
+                    .status(400)
+                    .send({ ok: false, error_message: `"group" must be a valid number!` });
+            }
+
+            let task = await pool.query(
+                `INSERT INTO tasks (title, expire, group_id, owner)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+                [title, expire, groupID, UID]
+            );
+
+            task = task.rows[0];
+
+            return res.status(201).send({
+                ok: true,
+                message: "Task has been successfully created.",
+                data: task,
+            });
         } catch (error) {
-            return res
-                .status(500)
-                .send({ ok: false, error_message: `SERVER ERROR!`, error: error })
+            return res.status(500).send({
+                ok: false,
+                error_message: `SERVER ERROR!`,
+                error,
+            });
         }
     }
+
 
     async get(req: Request, res: Response) {
         // @ts-ignore

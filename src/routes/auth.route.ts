@@ -11,19 +11,12 @@ authRoute.get("/google/callback",
     passport.authenticate("google", { session: false, failureRedirect: "/" }),
     (req: Request, res: Response) => {
         // @ts-ignore
-        const accessToken = TokenUtile.createAccess({ id: req.user.id })
-        // @ts-ignore
-        const refrashToken = TokenUtile.createRefresh({ id: req.user.id, email: req?.email })
-        res.cookie("refresh_token", refrashToken, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "none",
-            maxAge: 1000 * 60 * 60 * 24 * 30,
-        });
-        return res.redirect(`${process.env.FRONTEND_URL}/token/?token=${accessToken}`);
+        const code = TokenUtile.codeGetToken({ id: req.user.id });
+        return res.redirect(`${process.env.FRONTEND_URL}/token?code=${code}`);
     }
 )
 
-authRoute.get("/token", token.refresh)
+authRoute.post("/token", token.refresh)
+authRoute.get("/code/:code", token.tokensWithCode)
 
 export default authRoute
