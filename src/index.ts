@@ -69,7 +69,18 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Public folder
 const publicPath = path.join(__dirname, "..", "public");
-app.use("/public", express.static(publicPath));
+app.use(
+  "/public",
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "https://tmanagment.vercel.app",
+    ],
+    credentials: true,
+  }),
+  express.static(publicPath)
+);
 
 // Passport
 app.use(passport.initialize());
