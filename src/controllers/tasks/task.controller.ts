@@ -15,16 +15,32 @@ export class TasksController {
             }
 
             const groupID = group === "null" ? null : Number(group);
-            if (groupID !== null && isNaN(groupID)) {
-                return res
-                    .status(400)
-                    .send({ ok: false, error_message: `"group" must be a valid number!` });
+
+            // ✅ YANGI: group_id ni tekshirish
+            if (groupID !== null) {
+                if (isNaN(groupID)) {
+                    return res
+                        .status(400)
+                        .send({ ok: false, error_message: `"group" must be a valid number!` });
+                }
+
+                // Guruh mavjudligini tekshiramiz
+                const groupExists = await pool.query(
+                    `SELECT id FROM groups WHERE id = $1 AND owner = $2`,
+                    [groupID, UID]
+                );
+
+                if (groupExists.rows.length === 0) {
+                    return res
+                        .status(400)
+                        .send({ ok: false, error_message: `Group with id ${groupID} not found!` });
+                }
             }
 
             let task = await pool.query(
                 `INSERT INTO tasks (title, expire, group_id, owner)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
+            VALUES ($1, $2, $3, $4)
+            RETURNING *`,
                 [title, expire, groupID, UID]
             );
 
@@ -43,7 +59,6 @@ export class TasksController {
             });
         }
     }
-
 
     async get(req: Request, res: Response) {
         // @ts-ignore
@@ -106,9 +121,26 @@ export class TasksController {
                     .status(403)
                     .send({ ok: false, error_message: "The task belongs to another user." })
             }
+
+            // ✅ YANGI: Yangi group ni tekshirish
+            let newGroupId = group ?? prevData.group_id;
+            if (newGroupId !== null && newGroupId !== undefined) {
+                const groupExists = await pool.query(
+                    `SELECT id FROM groups WHERE id = $1 AND owner = $2`,
+                    [newGroupId, UID]
+                );
+
+                if (groupExists.rows.length === 0) {
+                    return res
+                        .status(400)
+                        .send({ ok: false, error_message: `Group with id ${newGroupId} not found!` });
+                }
+            }
+
             prevData.title = title ?? prevData.title
             prevData.status = status ?? prevData.status
-            prevData.group_id = group ?? prevData.group_id
+            prevData.group_id = newGroupId
+
             await pool.query(`UPDATE tasks SET title = $1, status = $2, group_id =$3 WHERE id = $4`,
                 [prevData.title, prevData.status, prevData.group_id, prevData.id])
             return res
