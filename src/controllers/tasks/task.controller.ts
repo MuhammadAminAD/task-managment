@@ -14,10 +14,9 @@ export class TasksController {
                     .send({ ok: false, error_message: `"title" and "expire" are required!` });
             }
 
-            // ✅ YANGI: 0 ni ham null ga aylantiramiz
-            const groupID = group === "null" || group === "0" ? null : Number(group);
 
-            // ✅ YANGI: group_id ni tekshirish
+            const groupID = (group === "null" || group === "0" || !group) ? null : Number(group);
+
             if (groupID !== null) {
                 if (isNaN(groupID)) {
                     return res
@@ -25,11 +24,11 @@ export class TasksController {
                         .send({ ok: false, error_message: `"group" must be a valid number!` });
                 }
 
-                // Guruh mavjudligini tekshiramiz
                 const groupExists = await pool.query(
                     `SELECT id FROM groups WHERE id = $1 AND owner = $2`,
                     [groupID, UID]
                 );
+
 
                 if (groupExists.rows.length === 0) {
                     return res
