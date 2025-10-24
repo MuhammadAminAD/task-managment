@@ -17,24 +17,51 @@ const port = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            connectSrc: ["'self'", "http://localhost:*", "ws://localhost:*"],
-            imgSrc: ["'self'", "data:", "https:"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-        }
-    }
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: [
+        "'self'",
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "http://localhost:5173", // ✅ frontend
+        "ws://localhost:*"
+      ],
+      imgSrc: [
+        "'self'",
+        "data:",
+        "https:",
+        "http://localhost:*", // ✅ local rasmlar uchun
+        "http://127.0.0.1:*"
+      ],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+    },
+  },
 }));
 
 
 // CORS
+const allowedOrigins = [
+  "http://localhost:5173", // Frontend dev
+  "https://tmanagment.vercel.app", // Production (keyinroq)
+];
 const corsOptions = {
-    origin: process.env.ORIGIN_ACCESS,
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    credentials: true,
-    optionsSuccessStatus: 204
+  origin: (origin, callback) => {
+    // Agar so‘rovda origin yo‘q bo‘lsa (masalan, Postman)
+    if (!origin) return callback(null, true);
+
+    // Agar origin ruxsat etilgan ro‘yxatda bo‘lsa
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Aks holda blokla
+    return callback(new Error("CORS policy: access denied"));
+  },
+  credentials: true,
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
@@ -51,16 +78,16 @@ app.use(passport.initialize());
 
 // Body validation
 app.use((req, res, next) => {
-    if (req.method === "OPTIONS") return next();
-    if (["POST", "PUT", "PATCH"].includes(req.method)) {
-        if (!req.body || typeof req.body !== "object") {
-            return res.status(400).send({
-                ok: false,
-                error_message: "Request body is missing or invalid"
-            });
-        }
+  if (req.method === "OPTIONS") return next();
+  if (["POST", "PUT", "PATCH"].includes(req.method)) {
+    if (!req.body || typeof req.body !== "object") {
+      return res.status(400).send({
+        ok: false,
+        error_message: "Request body is missing or invalid"
+      });
     }
-    next();
+  }
+  next();
 });
 
 // DB
@@ -71,5 +98,5 @@ app.use("/api/v1", route);
 
 // Start server
 app.listen(port, () => {
-    console.log(`✅ THE SERVER STARTED ON PORT ${port}`);
+  console.log(`✅ THE SERVER STARTED ON PORT ${port}`);
 });
