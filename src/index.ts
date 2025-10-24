@@ -58,6 +58,12 @@ const corsOptions = {
   ],
 };
 
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  next();
+});
+
 // ✅ CORS va OPTIONS handler
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions)); // Express 5 uchun to‘g‘ri format
