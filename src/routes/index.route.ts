@@ -11,11 +11,11 @@ import noteRoute from "./note.route.js";
 
 const route = Router();
 // route.post("/ai", Ai)
-route.use("/telegram", telegramRoute)
+route.use("/telegram", VerifyUserMiddleware, telegramRoute)
 route.use("/groups", VerifyUserMiddleware, groupRoute)
 route.use("/tasks", VerifyUserMiddleware, taskRoute)
 route.use("/auth", authRoute)
-route.use("/icons", iconRoute)
+route.use("/icons", VerifyUserMiddleware, iconRoute)
 route.use("/notes", VerifyUserMiddleware, noteRoute)
 
 export default route;       

@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import TokenUtile from "../utils/token.util.js";
+import pool from "../config/database.config.js";
 
-export function VerifyUserMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function VerifyUserMiddleware(req: Request, res: Response, next: NextFunction) {
     try {
         const authHeader = req.headers.authorization;
 
@@ -13,8 +14,17 @@ export function VerifyUserMiddleware(req: Request, res: Response, next: NextFunc
         const verifyToken = TokenUtile.verifyAccess(token);
 
         if (verifyToken.ok) {
-            req.user = verifyToken.data;
-            return next();
+            // @ts-ignore
+            const userId = verifyToken.data?.id
+            const isExistUser = (await pool.query("select * from users where id = $1", [userId]))?.rows[0]
+            if (isExistUser) {
+                req.user = verifyToken.data;
+                return next();
+            } else {
+                return res
+                    .status(401)
+                    .send({ ok: false, error_message: "Token not found or expired!" })
+            }
         } else {
             return res
                 .status(401)
