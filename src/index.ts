@@ -25,14 +25,16 @@ app.use(helmet({
         "http://localhost:*",
         "http://127.0.0.1:*",
         "http://localhost:5173", // ✅ frontend
-        "ws://localhost:*"
+        "ws://localhost:*",
+        "https://tmanagment.vercel.app"
       ],
       imgSrc: [
         "'self'",
         "data:",
         "https:",
         "http://localhost:*", // ✅ local rasmlar uchun
-        "http://127.0.0.1:*"
+        "http://127.0.0.1:*",
+        "https://tmanagment.vercel.app/"
       ],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
