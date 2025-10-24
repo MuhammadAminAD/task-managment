@@ -13,75 +13,59 @@ env.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ESM __dirname fix
+// __dirname fix (ESM)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ YANGI: Helmet sozlamalari tuzatildi
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      connectSrc: [
-        "'self'",
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "http://localhost:5173",
-        "ws://localhost:*",
-        "https://tmanagment.vercel.app"
-      ],
-      imgSrc: [
-        "'self'",
-        "data:",
-        "https:",
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "https://tmanagment.vercel.app"
-      ],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-    },
-  },
-  // ✅ YANGI: Cross-origin sozlamalari
-  crossOriginOpenerPolicy: { policy: "unsafe-none" }, // Yoki "same-origin-allow-popups"
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginEmbedderPolicy: false
-}));
+// Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
-// CORS
+// ✅ CORS sozlamalari
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
   "https://tmanagment.vercel.app",
 ];
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    // ✅ YANGI: Origin bo'lmasa ham ruxsat berish
+  origin: function (origin, callback) {
+    // ✅ Development paytida Postman yoki origin bo‘lmasa ham ruxsat
     if (!origin) return callback(null, true);
 
-    // ✅ YANGI: Localhost va production domainlarni tekshirish
     if (
       allowedOrigins.includes(origin) ||
       origin.includes("localhost") ||
-      origin.includes("127.0.0.1") ||
-      origin.includes("tmanagment.vercel.app")
+      origin.includes("127.0.0.1")
     ) {
-      return callback(null, true);
+      callback(null, true);
+    } else {
+      console.log("❌ CORS blocked for:", origin);
+      callback(new Error("CORS policy: access denied"));
     }
-
-    console.log("CORS blocked for origin:", origin);
-    return callback(new Error("CORS policy: access denied"));
   },
   credentials: true,
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-  allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
-  optionsSuccessStatus: 204,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Cookie",
+    "X-Requested-With",
+  ],
 };
 
+// ✅ CORS va OPTIONS handler
 app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions)); // Express 5 uchun to‘g‘ri format
+
+// Cookie va JSON
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Public folder
 const publicPath = path.join(__dirname, "..", "public");
@@ -97,7 +81,7 @@ app.use((req, res, next) => {
     if (!req.body || typeof req.body !== "object") {
       return res.status(400).send({
         ok: false,
-        error_message: "Request body is missing or invalid"
+        error_message: "Request body is missing or invalid",
       });
     }
   }
@@ -110,21 +94,33 @@ createTables();
 // API routes
 app.use("/api/v1", route);
 
-// ✅ YANGI: CORS preflight so'rovlari uchun
-app.options("*", cors(corsOptions));
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    ok: false,
+    error_message: "Endpoint topilmadi",
+  });
+});
 
-// ✅ YANGI: Error handling middleware
+// Xatolarni tutish
 app.use((error, req, res, next) => {
+  console.error("❌ Server xatosi:", error.message);
+
   if (error.message === "CORS policy: access denied") {
     return res.status(403).json({
       ok: false,
-      error_message: "CORS: Access denied"
+      error_message: "CORS: Ruxsat berilmagan so'rov",
     });
   }
-  next(error);
+
+  res.status(500).json({
+    ok: false,
+    error_message: "Server ichki xatosi",
+  });
 });
 
 // Start server
 app.listen(port, () => {
-  console.log(`✅ THE SERVER STARTED ON PORT ${port}`);
+  console.log(`✅ SERVER ${port}-PORTDA ISHGA TUSHDI`);
+  console.log(`🌐 Ruxsat etilgan originlar: ${allowedOrigins.join(", ")}`);
 });
