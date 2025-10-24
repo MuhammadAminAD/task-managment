@@ -14,7 +14,8 @@ export class TasksController {
                     .send({ ok: false, error_message: `"title" and "expire" are required!` });
             }
 
-            const groupID = group === "null" ? null : Number(group);
+            // ✅ YANGI: 0 ni ham null ga aylantiramiz
+            const groupID = group === "null" || group === "0" ? null : Number(group);
 
             // ✅ YANGI: group_id ni tekshirish
             if (groupID !== null) {
